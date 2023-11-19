@@ -3,9 +3,15 @@ project(crow_examples)
 
 include(${CMAKE_SOURCE_DIR}/cmake/compiler_options.cmake)
 
+set(INC_DIR /usr/include)
+set(LINK_DIR /usr/lib/x86_64-linux-gnu)
+include_directories(${INC_DIR})
+link_directories(${LINK_DIR})
+
 add_executable(helloworld helloworld.cpp)
 add_warnings_optimizations(helloworld)
-target_link_libraries(helloworld PUBLIC Crow::Crow)
+target_link_libraries(helloworld PUBLIC Crow::Crow tinyxml2)
+
 
 # If compression is enabled, the example will be built
 if("compression" IN_LIST CROW_FEATURES)
