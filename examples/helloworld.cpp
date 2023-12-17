@@ -45,7 +45,7 @@ int compareVersions(const std::string& version1, const std::string& version2)
     return 0;
 }
 
-std::string readLocalVersion()
+std::string readLocalVersion(std::string& needForceUpdate)
 {
     std::string filePath = "/home/ubuntu/Crow/updater/localVersion.txt";
     std::ifstream inputFile(filePath);
@@ -55,11 +55,12 @@ std::string readLocalVersion()
         return "-1";
     }
 
-    std::string line;
-    std::getline(inputFile, line);
+    std::string localVersion;
+    std::getline(inputFile, localVersion);
+    std::getline(inputFile, needForceUpdate);
 
     inputFile.close();
-    return line;
+    return localVersion;
 }
 
 int main()
@@ -71,7 +72,8 @@ int main()
     ([](const crow::request& req) {
 
         std::string remoteVersion = req.url_params.get("version");
-        std::string localVersion = readLocalVersion();
+        std::string needForceUpdate = "no";
+        std::string localVersion = readLocalVersion(needForceUpdate);
 
         std::string needUpdate = "no";
         if (localVersion != "-1" && compareVersions(localVersion, remoteVersion) == 1) {
@@ -80,7 +82,8 @@ int main()
 
         CROW_LOG_INFO << "getResponseXml, localVersion = " << localVersion
                         << ", remoteVersion = " << remoteVersion
-                        << ", needUpdate = " << needUpdate;
+                        << ", needUpdate = " << needUpdate
+                        << ", needForceUpdate = " << needForceUpdate;
 
         // create XML doc
         XMLDocument doc;
@@ -93,6 +96,10 @@ int main()
         XMLElement* needUpdateElement = doc.NewElement("NeedToBeUpdated");
         needUpdateElement->SetText(needUpdate.c_str());
         gupElement->InsertEndChild(needUpdateElement);
+
+        XMLElement* needForceUpdateElement = doc.NewElement("NeedToBeForceUpdated");
+        needForceUpdateElement->SetText(needForceUpdate.c_str());
+        gupElement->InsertEndChild(needForceUpdateElement);
 
         XMLElement* versionElement = doc.NewElement("Version");
         versionElement->SetText(localVersion.c_str());
