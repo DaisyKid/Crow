@@ -64,18 +64,43 @@ std::string readLocalVersion(std::string& needForceUpdate)
     return localVersion;
 }
 
-void parseVersionInfo(const std::string& filename, std::string& localVersion, std::string& needForceUpdate)
+bool writeLocalVersion(const std::string& localVersion, const std::string& needForceUpdate)
+{
+    // Open a file stream, create the file if it does not exist.
+    std::string filePath = "/home/root/Crow/updater/localVersion.txt";
+    std::ofstream outputFile(filePath);
+
+    if (outputFile.is_open()) {
+        outputFile << localVersion << std::endl;
+        outputFile << needForceUpdate << std::endl;
+
+        outputFile.close();
+
+        CROW_LOG_INFO << "Successfully wrote data to the file.";
+    } else {
+        CROW_LOG_ERROR << "Can't open the file";
+        return 1; // return error
+    }
+    return 0;
+}
+
+void parseVersionInfo(const std::string& filename)
 {
     std::regex pattern("setup_(\\d+\\.\\d+)_([a-zA-Z]+)\\.exe");
     std::smatch matches;
 
     if (std::regex_search(filename, matches, pattern)) {
+        std::string localVersion = "-1";
+        std::string needForceUpdate = "no";
         localVersion = matches[1].str();
         if ("yes" == matches[2].str() || "no" == matches[2].str()) {
             needForceUpdate = matches[2].str();
         }
         CROW_LOG_INFO << "parseVersionInfo, localVersion = " << localVersion
             << ", needForceUpdate = " << needForceUpdate;
+
+        writeLocalVersion(localVersion, needForceUpdate);
+
     } else {
         CROW_LOG_ERROR << "No matched version info found";
     }
@@ -85,19 +110,16 @@ int main()
 {
     crow::SimpleApp app;
 
-    std::string localVersion = "-1";
-    std::string needForceUpdate = "no";
-
     //
 	// Response the request info about the version
 	//
     // {ip}:8080/params?version=1.0
     CROW_ROUTE(app, "/params")
-    ([&](const crow::request& req) {
+    ([](const crow::request& req) {
 
         std::string remoteVersion = req.url_params.get("version");
-        // std::string needForceUpdate = "no";
-        // std::string localVersion = readLocalVersion(needForceUpdate);
+        std::string needForceUpdate = "no";
+        std::string localVersion = readLocalVersion(needForceUpdate);
 
         std::string needUpdate = "no";
         if (localVersion != "-1" && compareVersions(localVersion, remoteVersion) == 1) {
@@ -145,8 +167,11 @@ int main()
 	//
     CROW_ROUTE(app, "/setup")
     ([](const crow::request&, crow::response& res) {
-
-        res.set_static_file_info("setup");
+        std::string needForceUpdate = "no";
+        std::string localVersion = readLocalVersion(needForceUpdate);
+        std::string setupFile = "setup_" + localVersion + "_" + needForceUpdate + ".exe";
+        CROW_LOG_INFO << "setupFile = " << setupFile;
+        res.set_static_file_info(setupFile);
         res.set_header("content-type", "application/octet-stream");
         res.end();
 
@@ -180,10 +205,7 @@ int main()
                   }
                   const std::string outfile_name = params_it->second;
 
-                  parseVersionInfo(outfile_name, localVersion, needForceUpdate);
-                  CROW_LOG_INFO << "outfile_name = " << outfile_name
-                    << ", localVersion = " << localVersion
-                    << ", needForceUpdate = " << needForceUpdate;
+                  parseVersionInfo(outfile_name);
 
                   for (const auto& part_header : part_value.headers)
                   {
@@ -217,8 +239,8 @@ int main()
           return crow::response(200);
       });
 
-    // enables all log
-    app.loglevel(crow::LogLevel::Debug);
+    // // enables all log
+    // app.loglevel(crow::LogLevel::Debug);
 
     app.port(8080)
       .multithreaded()
