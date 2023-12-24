@@ -207,3 +207,42 @@ Crow has incorporated the following libraries into its source.
     FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
     ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
+
+## Pre install
+```bash
+snap install cmake --classic
+apt-get -y install libasio-dev
+apt-get install libtinyxml2-dev
+```
+
+## Compile and run
+```bash
+git clone https://github.com/CrowCpp/Crow.git
+cd Crow
+mkdir build
+cd build
+cmake -DCROW_BUILD_EXAMPLES=ON -DCROW_BUILD_TESTS=OFF ../
+make
+./examples/helloworld
+```
+
+## Current support in helloworld
+
+#### Response to the request about version
+```bash
+http://121.40.148.40:8080/params?version=1.0
+```
+
+#### Download the setup file
+```bash
+http://121.40.148.40:8080/setup
+```
+
+#### Upload the setup file
+```bash
+http://121.40.148.40:8080/uploadfile
+```
+Client uses the curl command to upload the local file to the remote with parameters.
+```bash
+C:\workspace>curl -X POST -F "InputFile=@C:\workspace\Setup\Debug\setup.exe" -F "Version=3.3" -F "ForcedUpdate=yes" http://121.40.148.40:8080/uploadfile
+```
