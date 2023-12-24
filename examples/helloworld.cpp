@@ -3,6 +3,7 @@
 #include <vector>
 #include <iterator>
 #include <sstream>
+#include <regex>
 
 #include "crow.h"
 #include "tinyxml2.h"
@@ -63,20 +64,40 @@ std::string readLocalVersion(std::string& needForceUpdate)
     return localVersion;
 }
 
+void parseVersionInfo(const std::string& filename, std::string& localVersion, std::string& needForceUpdate)
+{
+    std::regex pattern("setup_(\\d+\\.\\d+)_([a-zA-Z]+)\\.exe");
+    std::smatch matches;
+
+    if (std::regex_search(filename, matches, pattern)) {
+        localVersion = matches[1].str();
+        if ("yes" == matches[2].str() || "no" == matches[2].str()) {
+            needForceUpdate = matches[2].str();
+        }
+        CROW_LOG_INFO << "parseVersionInfo, localVersion = " << localVersion
+            << ", needForceUpdate = " << needForceUpdate;
+    } else {
+        CROW_LOG_ERROR << "No matched version info found";
+    }
+}
+
 int main()
 {
     crow::SimpleApp app;
+
+    std::string localVersion = "-1";
+    std::string needForceUpdate = "no";
 
     //
 	// Response the request info about the version
 	//
     // {ip}:8080/params?version=1.0
     CROW_ROUTE(app, "/params")
-    ([](const crow::request& req) {
+    ([&](const crow::request& req) {
 
         std::string remoteVersion = req.url_params.get("version");
-        std::string needForceUpdate = "no";
-        std::string localVersion = readLocalVersion(needForceUpdate);
+        // std::string needForceUpdate = "no";
+        // std::string localVersion = readLocalVersion(needForceUpdate);
 
         std::string needUpdate = "no";
         if (localVersion != "-1" && compareVersions(localVersion, remoteVersion) == 1) {
@@ -135,7 +156,7 @@ int main()
 	// Upload the setup file
 	//
     CROW_ROUTE(app, "/uploadfile")
-      .methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+      .methods(crow::HTTPMethod::Post)([&](const crow::request& req) {
           crow::multipart::message file_message(req);
           for (const auto& part : file_message.part_map)
           {
@@ -158,6 +179,11 @@ int main()
                       return crow::response(400);
                   }
                   const std::string outfile_name = params_it->second;
+
+                  parseVersionInfo(outfile_name, localVersion, needForceUpdate);
+                  CROW_LOG_INFO << "outfile_name = " << outfile_name
+                    << ", localVersion = " << localVersion
+                    << ", needForceUpdate = " << needForceUpdate;
 
                   for (const auto& part_header : part_value.headers)
                   {
