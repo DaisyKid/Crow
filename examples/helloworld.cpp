@@ -47,7 +47,7 @@ int compareVersions(const std::string& version1, const std::string& version2)
 
 std::string readLocalVersion(std::string& needForceUpdate)
 {
-    std::string filePath = "/home/ubuntu/Crow/updater/localVersion.txt";
+    std::string filePath = "/home/root/Crow/updater/localVersion.txt";
     std::ifstream inputFile(filePath);
 
     if (!inputFile.is_open()) {
@@ -67,6 +67,9 @@ int main()
 {
     crow::SimpleApp app;
 
+    //
+	// Response the request info about the version
+	//
     // {ip}:8080/params?version=1.0
     CROW_ROUTE(app, "/params")
     ([](const crow::request& req) {
@@ -106,7 +109,7 @@ int main()
         gupElement->InsertEndChild(versionElement);
 
         XMLElement* locationElement = doc.NewElement("Location");
-        locationElement->SetText("http://49.235.100.232:8080/setup");
+        locationElement->SetText("http://121.40.148.40:8080/setup");
         gupElement->InsertEndChild(locationElement);
 
         // save and convert
@@ -116,6 +119,9 @@ int main()
         return crow::response{printer.CStr()};
     });
 
+    //
+	// Download the setup file
+	//
     CROW_ROUTE(app, "/setup")
     ([](const crow::request&, crow::response& res) {
 
@@ -125,5 +131,70 @@ int main()
 
     });
 
-    app.port(8080).run();
+    //
+	// Upload the setup file
+	//
+    CROW_ROUTE(app, "/uploadfile")
+      .methods(crow::HTTPMethod::Post)([](const crow::request& req) {
+          crow::multipart::message file_message(req);
+          for (const auto& part : file_message.part_map)
+          {
+              const auto& part_name = part.first;
+              const auto& part_value = part.second;
+              CROW_LOG_DEBUG << "Part: " << part_name;
+              if ("InputFile" == part_name)
+              {
+                  // Extract the file name
+                  auto headers_it = part_value.headers.find("Content-Disposition");
+                  if (headers_it == part_value.headers.end())
+                  {
+                      CROW_LOG_ERROR << "No Content-Disposition found";
+                      return crow::response(400);
+                  }
+                  auto params_it = headers_it->second.params.find("filename");
+                  if (params_it == headers_it->second.params.end())
+                  {
+                      CROW_LOG_ERROR << "Part with name \"InputFile\" should have a file";
+                      return crow::response(400);
+                  }
+                  const std::string outfile_name = params_it->second;
+
+                  for (const auto& part_header : part_value.headers)
+                  {
+                      const auto& part_header_name = part_header.first;
+                      const auto& part_header_val = part_header.second;
+                      CROW_LOG_DEBUG << "Header: " << part_header_name << '=' << part_header_val.value;
+                      for (const auto& param : part_header_val.params)
+                      {
+                          const auto& param_key = param.first;
+                          const auto& param_val = param.second;
+                          CROW_LOG_DEBUG << " Param: " << param_key << ',' << param_val;
+                      }
+                  }
+
+                  // Create a new file with the extracted file name and write file contents to it
+                  std::ofstream out_file("/home/root/Crow/updater/" + outfile_name);
+                  if (!out_file)
+                  {
+                      CROW_LOG_ERROR << " Write to file failed\n";
+                      continue;
+                  }
+                  out_file << part_value.body;
+                  out_file.close();
+                  CROW_LOG_INFO << " Contents written to /home/root/Crow/updater/" << outfile_name << '\n';
+              }
+              else
+              {
+                  CROW_LOG_DEBUG << " Value: " << part_value.body << '\n';
+              }
+          }
+          return crow::response(200);
+      });
+
+    // enables all log
+    app.loglevel(crow::LogLevel::Debug);
+
+    app.port(8080)
+      .multithreaded()
+      .run();
 }
