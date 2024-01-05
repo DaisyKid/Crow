@@ -62,7 +62,14 @@ namespace crow
                     prefix = "CRITICAL";
                     break;
             }
-            std::cerr << std::string("(") + timestamp() + std::string(") [") + prefix + std::string("] ") + message << std::endl;
+
+            std::ofstream outputFile("stage_instrument_crow.log", std::ios::app);
+            if (outputFile.is_open()) {
+                outputFile << std::string("(") + timestamp() + std::string(") [") + prefix + std::string("] ") + message << std::endl;
+                std::cout << "Content written to file successfully." << std::endl;
+            } else {
+                std::cerr << "Unable to open the file." << std::endl;
+            }
         }
 
     private:

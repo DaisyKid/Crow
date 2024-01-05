@@ -1,0 +1,11 @@
+[Unit]
+Description=Crow
+After=network.target
+
+[Service]
+ExecStart=/home/root/Crow/build/main/stage_instrument
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

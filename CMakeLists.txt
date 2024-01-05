@@ -35,6 +35,7 @@ endif()
 #####################################
 # Define Options
 #####################################
+option(CROW_BUILD_MAIN_SERVICE     "Build the main service in the project"      ${CROW_IS_MAIN_PROJECT})
 option(CROW_BUILD_EXAMPLES     "Build the examples in the project"      ${CROW_IS_MAIN_PROJECT})
 option(CROW_BUILD_TESTS        "Build the tests in the project"         ${CROW_IS_MAIN_PROJECT})
 option(CROW_AMALGAMATE         "Combine all headers into one"           OFF)
@@ -86,6 +87,11 @@ if(CROW_AMALGAMATE)
 	)
 
 	add_custom_target(crow_amalgamated ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/crow_all.h)
+endif()
+
+# Main service
+if(CROW_BUILD_MAIN_SERVICE)
+	add_subdirectory(main)
 endif()
 
 # Examples

@@ -221,9 +221,11 @@ git clone https://github.com/CrowCpp/Crow.git
 cd Crow
 mkdir build
 cd build
-cmake -DCROW_BUILD_EXAMPLES=ON -DCROW_BUILD_TESTS=OFF ../
+cmake -DCROW_BUILD_MAIN_SERVICE=ON -DCROW_BUILD_TESTS=OFF ../
 make
-./examples/helloworld
+cp ../main/crow.service /usr/lib/systemd/system/
+service crow stop
+service crow start
 ```
 
 ## Current support in helloworld
@@ -238,11 +240,13 @@ http://121.40.148.40:8080/params?version=1.0
 http://121.40.148.40:8080/setup
 ```
 
-#### Upload the setup file
+#### Update the version info of the setup file
 ```bash
-http://121.40.148.40:8080/uploadfile
+http://121.40.148.40:8080/update
 ```
-Client uses the curl command to upload the local file to the remote with parameters.
+Client uses the curl command to update the version info of setup file to the remote server.
 ```bash
-C:\workspace>curl -X POST -F "InputFile=@C:\workspace\Setup\Debug\setup.exe" -F "Version=3.3" -F "ForcedUpdate=yes" http://121.40.148.40:8080/uploadfile
+C:\workspace>curl -X POST -F "Version=3.3" -F "ForcedUpdate=yes" http://121.40.148.40:8080/update
 ```
+
+Client uses the scp command to upload the corresponding setup file to the remote server.
