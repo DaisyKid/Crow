@@ -213,6 +213,7 @@ Crow has incorporated the following libraries into its source.
 snap install cmake --classic
 apt-get -y install libasio-dev
 apt-get install libtinyxml2-dev
+apt-get install libspdlog-dev
 ```
 
 ## Compile and run

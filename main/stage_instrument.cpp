@@ -7,6 +7,10 @@
 
 #include "crow.h"
 #include "tinyxml2.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/cfg/env.h"   // support for loading levels from the environment variable
+#include "spdlog/fmt/ostr.h"  // support for user defined types
 
 using namespace tinyxml2;
 
@@ -107,8 +111,36 @@ bool isValidForcedUpdate(const std::string& forcedUpdate)
     }
 }
 
+class CustomLogger : public crow::ILogHandler {
+public:
+    CustomLogger() {
+        // Create a file rotating logger with 50mb size max and 10 rotated files.
+        m_rotatingLogger =
+            spdlog::rotating_logger_mt("stage_instrument_crow", "logs/stage_instrument_crow.log", 1048576 * 50, 10);
+        spdlog::flush_every(std::chrono::seconds(1));
+    }
+    void log(std::string message, crow::LogLevel level) {
+        if (crow::LogLevel::Critical == level) {
+            m_rotatingLogger->critical(message.c_str());
+        } else if (crow::LogLevel::Error == level) {
+            m_rotatingLogger->error(message.c_str());
+        } else if (crow::LogLevel::Warning == level) {
+            m_rotatingLogger->warn(message.c_str());
+        } else if (crow::LogLevel::Info == level) {
+            m_rotatingLogger->info(message.c_str());
+        } else if (crow::LogLevel::Debug == level) {
+            m_rotatingLogger->debug(message.c_str());
+        }
+    }
+private:
+    std::shared_ptr<spdlog::logger> m_rotatingLogger;
+};
+
 int main()
 {
+    CustomLogger logger;
+    crow::logger::setHandler(&logger);
+
     crow::SimpleApp app;
 
     //
