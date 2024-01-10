@@ -15,10 +15,10 @@
 using namespace tinyxml2;
 
 static std::string INVALID_VERSION = "-1";
-static std::string DEFAULT_VERSION = "1.0";
+static std::string DEFAULT_VERSION = "1.0.0";
 static std::string DEFAULT_FORCED_UPDATE = "no";
 
-// generally the version format is like "1.0" and so on
+// generally the version format is like "1.0.0" and so on
 std::vector<int> splitVersion(const std::string& version)
 {
     std::vector<int> result;
@@ -72,8 +72,27 @@ std::string readLocalVersion(std::string& needForceUpdate)
     return localVersion;
 }
 
+bool isSetupFileExist(const std::string& localVersion)
+{
+    std::string filePath = "StageInstrument-" + localVersion + "-x64-Setup.msi";
+    std::ifstream setupFile(filePath);
+
+    if (!setupFile.is_open()) {
+        CROW_LOG_ERROR << "isSetupFileExist, error finding file: " << filePath;
+        return false;
+    }
+
+    setupFile.close();
+    return true;
+}
+
 bool writeLocalVersion(const std::string& localVersion, const std::string& needForceUpdate)
 {
+    if (!isSetupFileExist(localVersion)) {
+        CROW_LOG_ERROR << "Can't find the setup file";
+        return false;
+    }
+
     // Open a file stream, create the file if it does not exist.
     std::string filePath = "/home/root/Crow/updater/localVersion.txt";
     std::ofstream outputFile(filePath);
@@ -87,15 +106,15 @@ bool writeLocalVersion(const std::string& localVersion, const std::string& needF
         CROW_LOG_INFO << "Successfully wrote data to the file.";
     } else {
         CROW_LOG_ERROR << "Can't open the file";
-        return 1; // return error
+        return false;
     }
-    return 0;
+    return true;
 }
 
 bool isValidVersion(const std::string& version)
 {
     // define the pattern
-    std::regex versionPattern("^\\d+\\.\\d+$");
+    std::regex versionPattern("^\\d+\\.\\d+\\.\\d+$");
 
     // match the version with the pattern
     return std::regex_match(version, versionPattern);
@@ -146,9 +165,11 @@ int main()
     //
 	// Response the request info about the version
 	//
-    // {ip}:8080/params?version=1.0
+    // {ip}:8080/params?version=1.0.0
     CROW_ROUTE(app, "/params")
     ([](const crow::request& req) {
+        // local version is the version in server
+        // remote version is the version in client
         std::string remoteVersion = req.url_params.get("version");
         if (!isValidVersion(remoteVersion)) {
             return crow::response(400);
@@ -209,7 +230,7 @@ int main()
     ([](const crow::request&, crow::response& res) {
         std::string needForceUpdate = DEFAULT_FORCED_UPDATE;
         std::string localVersion = readLocalVersion(needForceUpdate);
-        std::string setupFile = "StageInstrument-" + localVersion + "-x64-Setup";
+        std::string setupFile = "StageInstrument-" + localVersion + "-x64-Setup.msi";
         CROW_LOG_INFO << "setupFile = " << setupFile;
         res.set_static_file_info(setupFile);
         res.set_header("content-type", "application/octet-stream");
@@ -241,8 +262,11 @@ int main()
                 needForceUpdate = part_value.body;
             }
         }
-        writeLocalVersion(localVersion, needForceUpdate);
-        return crow::response(200);
+        if (writeLocalVersion(localVersion, needForceUpdate)) {
+            return crow::response(200);
+        } else {
+            return crow::response(400);
+        }
       });
 
     // enables all log
