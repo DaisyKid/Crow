@@ -229,11 +229,11 @@ service crow stop
 service crow start
 ```
 
-## Current support in helloworld
+## Current support in stage instrument
 
 #### Response to the request about version
 ```bash
-http://121.40.148.40:8080/params?version=1.0
+http://121.40.148.40:8080/params?version=1.0.0
 ```
 
 #### Download the setup file
@@ -247,7 +247,7 @@ http://121.40.148.40:8080/update
 ```
 Client uses the curl command to update the version info of setup file to the remote server.
 ```bash
-C:\workspace>curl -X POST -F "Version=3.3" -F "ForcedUpdate=yes" http://121.40.148.40:8080/update
+C:\workspace>curl -X POST -F "Version=3.3" -F "ForceUpdate=yes" http://121.40.148.40:8080/update
 ```
 
 Client uses the scp command to upload the corresponding setup file to the remote server.

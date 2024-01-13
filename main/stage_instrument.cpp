@@ -16,7 +16,7 @@ using namespace tinyxml2;
 
 static std::string INVALID_VERSION = "-1";
 static std::string DEFAULT_VERSION = "1.0.0";
-static std::string DEFAULT_FORCED_UPDATE = "no";
+static std::string DEFAULT_FORCE_UPDATE = "no";
 
 // generally the version format is like "1.0.0" and so on
 std::vector<int> splitVersion(const std::string& version)
@@ -60,7 +60,7 @@ std::string readLocalVersion(std::string& needForceUpdate)
     std::ifstream inputFile(filePath);
 
     if (!inputFile.is_open()) {
-        CROW_LOG_ERROR << "readLocalVersion, error opening file: " << filePath;
+        CROW_LOG_ERROR << "readLocalVersion, can't open file " << filePath;
         return INVALID_VERSION;
     }
 
@@ -78,7 +78,7 @@ bool isSetupFileExist(const std::string& localVersion)
     std::ifstream setupFile(filePath);
 
     if (!setupFile.is_open()) {
-        CROW_LOG_ERROR << "isSetupFileExist, error finding file: " << filePath;
+        CROW_LOG_ERROR << "isSetupFileExist, " << filePath << " does not exist.";
         return false;
     }
 
@@ -89,7 +89,6 @@ bool isSetupFileExist(const std::string& localVersion)
 bool writeLocalVersion(const std::string& localVersion, const std::string& needForceUpdate)
 {
     if (!isSetupFileExist(localVersion)) {
-        CROW_LOG_ERROR << "Can't find the setup file";
         return false;
     }
 
@@ -103,9 +102,9 @@ bool writeLocalVersion(const std::string& localVersion, const std::string& needF
 
         outputFile.close();
 
-        CROW_LOG_INFO << "Successfully wrote data to the file.";
+        CROW_LOG_INFO << "writeLocalVersion, successfully update version info to file " << filePath;
     } else {
-        CROW_LOG_ERROR << "Can't open the file";
+        CROW_LOG_ERROR << "writeLocalVersion, can't open file " << filePath;
         return false;
     }
     return true;
@@ -120,9 +119,9 @@ bool isValidVersion(const std::string& version)
     return std::regex_match(version, versionPattern);
 }
 
-bool isValidForcedUpdate(const std::string& forcedUpdate)
+bool isValidForceUpdate(const std::string& forceUpdate)
 {
-    if ("yes" == forcedUpdate || "no" == forcedUpdate) {
+    if ("yes" == forceUpdate || "no" == forceUpdate) {
         return true;
     }  
     else {
@@ -134,8 +133,7 @@ class CustomLogger : public crow::ILogHandler {
 public:
     CustomLogger() {
         // Create a file rotating logger with 50mb size max and 10 rotated files.
-        m_rotatingLogger =
-            spdlog::rotating_logger_mt("stage_instrument_crow", "logs/stage_instrument_crow.log", 1048576 * 50, 10);
+        m_rotatingLogger = spdlog::rotating_logger_mt("stage_instrument_crow", "logs/stage_instrument_crow.log", 1048576 * 50, 10);
         spdlog::flush_every(std::chrono::seconds(1));
     }
     void log(std::string message, crow::LogLevel level) {
@@ -175,7 +173,7 @@ int main()
             return crow::response(400);
         }
         
-        std::string needForceUpdate = DEFAULT_FORCED_UPDATE;
+        std::string needForceUpdate = DEFAULT_FORCE_UPDATE;
         std::string localVersion = readLocalVersion(needForceUpdate);
 
         if (!isValidVersion(localVersion)) {
@@ -228,7 +226,7 @@ int main()
 	//
     CROW_ROUTE(app, "/setup")
     ([](const crow::request&, crow::response& res) {
-        std::string needForceUpdate = DEFAULT_FORCED_UPDATE;
+        std::string needForceUpdate = DEFAULT_FORCE_UPDATE;
         std::string localVersion = readLocalVersion(needForceUpdate);
         std::string setupFile = "StageInstrument-" + localVersion + "-x64-Setup.msi";
         CROW_LOG_INFO << "setupFile = " << setupFile;
@@ -245,18 +243,18 @@ int main()
       .methods(crow::HTTPMethod::Post)([&](const crow::request& req) {
         crow::multipart::message file_message(req);
         std::string localVersion = INVALID_VERSION;
-        std::string needForceUpdate = DEFAULT_FORCED_UPDATE;
+        std::string needForceUpdate = DEFAULT_FORCE_UPDATE;
         for (const auto& part : file_message.part_map) {
             const auto& part_name = part.first;
             const auto& part_value = part.second;
-            CROW_LOG_INFO << "Part: " << part_name << "=" << part_value.body;
+            CROW_LOG_INFO << "part: " << part_name << "=" << part_value.body;
             if ("Version" == part_name) {
                 if (!isValidVersion(part_value.body)) {
                     return crow::response(400);
                 }
                 localVersion = part_value.body;
-            } else if ("ForcedUpdate" == part_name) {
-                if (!isValidForcedUpdate(part_value.body)) {
+            } else if ("ForceUpdate" == part_name) {
+                if (!isValidForceUpdate(part_value.body)) {
                     return crow::response(400);
                 }
                 needForceUpdate = part_value.body;
