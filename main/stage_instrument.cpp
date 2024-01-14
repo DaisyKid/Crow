@@ -181,8 +181,11 @@ int main()
         }
 
         std::string needUpdate = "no";
-        if (compareVersions(localVersion, remoteVersion) == 1) {
+        int result = compareVersions(localVersion, remoteVersion);
+        if (result == 1) {
             needUpdate = "yes";
+        } else if (result == 0) {
+            needForceUpdate = "no";
         }
 
         CROW_LOG_INFO << "getResponseXml, localVersion = " << localVersion
